@@ -234,8 +234,7 @@
                                     set-2
                                     set-intersect)) ;Add elts of L set in R set, del elts not in R sets.
             sets)))
-    
-            
+
 (defun set-diff (set-1 set-2 &rest set-ns)
   (declare (type set set-1 set-2)
 	   (type sets-list set-ns)) 
@@ -283,3 +282,4 @@
                                         set-2
                                         set-1))
                 sets))))) ;=> set-1
+
