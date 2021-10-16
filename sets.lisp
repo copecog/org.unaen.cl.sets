@@ -34,41 +34,34 @@
   (print-unreadable-object (object stream :type t :identity t)
     (format stream "{~{~a~^ ~}}"
 	    (loop :for key :being :the :hash-keys
-		    :of (slot-value object
-				    'members)
+		    :of (slot-value object 'members)
 		  :collect key))))
 
-(defgeneric set-add-element (element set)
-  (:method (elt (set set))
-    (setf (gethash elt
-                   (slot-value set
-			       'members))
-          t)))
+(defmethod set-add-element (element (set set))
+  (when (setf (gethash element
+		       (slot-value set 'members))
+	      t)
+    element))
 
-(defgeneric set-get-element (element set)
-  (:method (elt (set set))
-    (gethash elt
-             (slot-value set
-			 'members))))
+(defmethod set-get-element (element (set set))
+  (when (gethash element
+		 (slot-value set 'members))
+    element))
 
-(defgeneric set-del-element (element set)
-  (:method (elt (set set))
-    (remhash elt
-             (slot-value set
-			 'members))))
+(defmethod set-del-element (element (set set))
+  (when (remhash elt
+		 (slot-value set 'members))
+    element))
 
-(defgeneric set-size (set)
-  (:method ((set set))
-    (hash-table-count (slot-value set
-				  'members))))
+(defmethod set-size ((set set))
+  (hash-table-count (slot-value set 'members)))
 
-(defgeneric map-elements (element-function set)
-  (:method ((elt-fn function) (set set))
-    (maphash #'(lambda (key value)
-		 (declare (ignore value))
-		 (funcall elt-fn key))
-             (slot-value set 'members))
-    nil))
+(defmethod map-elements ((element-function function) (set set))
+  (maphash #'(lambda (key value)
+	       (declare (ignore value))
+	       (funcall element-function key))
+           (slot-value set 'members))
+  nil)
 
 #| ---------- Standard Set Types --------------------------------------------- |#
 (defgeneric set-p (object)
@@ -169,12 +162,10 @@
       (throw 'elements-not-equal nil)))
 
 #| ---------- Set Utility ---------------------------------------------------- |#
-(defgeneric set->list (set)
-  (:method ((set set))
-    (let ((set-list (list)))
-      (set-do-elements (elt set (nreverse set-list))
-        (push elt
-	      set-list)))))
+(defmethod set->list ((set set))
+  (let ((set-list (list)))
+    (set-do-elements (elt set (nreverse set-list))
+      (push elt set-list))))
 
 (defgeneric set-build (element set)
   (:method ((set->elts set) (set set))
@@ -191,10 +182,8 @@
     nil))
 
 #| ---------- Fundamental Mathematical Set Operations ------------------------ |#
-(defgeneric set-member-p (element set)
-  (:method (elt (set set))
-    (set-get-element elt
-		     set)))
+(defmethod set-member-p (element (set set))
+  (set-get-element elt set))
 
 (defun set (&rest elements)
   (let ((set (make-instance 'set)))
