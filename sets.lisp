@@ -10,6 +10,7 @@
            #:sets-list-p
            #:sets-list
            #:set-add-element
+	   #:set-add-set-elements
            #:set-get-element
            #:set-del-element
            #:set-do-elements
@@ -33,8 +34,7 @@
 (defmethod print-object ((object set) stream)
   (print-unreadable-object (object stream :type t :identity t)
     (format stream "{~{~a~^ ~}}"
-	    (loop :for key :being :the :hash-keys
-		    :of (slot-value object 'members)
+	    (loop :for key :being :the :hash-keys :of (slot-value object 'members)
 		  :collect key))))
 
 (defmethod set-add-element (element (set set))
@@ -42,6 +42,11 @@
 		       (slot-value set 'members))
 	      t)
     element))
+
+(defmethod set-add-set-elements ((elements set) (set set))
+  (when (loop :for element :being :the :hash-keys of (slot-value elements 'members)
+	      :always (set-add-element element set))
+    elements))
 
 (defmethod set-get-element (element (set set))
   (when (gethash element
