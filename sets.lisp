@@ -6,7 +6,7 @@
   (:use #:common-lisp)
   (:export #:set
            #:*set-test*
-           #:set-p
+           #:setp
            #:sets-list-p
            #:sets-list
            #:set-add-element
@@ -14,6 +14,7 @@
            #:set-get-element
            #:set-del-element
            #:set-do-elements
+	   #:set-find-element
            #:set->list
            #:set-member-p
            #:set-size
@@ -21,6 +22,7 @@
            #:set-intersect
            #:set-diff
            #:set-symm-diff
+	   #:*elt-equal-test*
            #:set-equal))
 
 (in-package #:org.unaen.cl.sets)
@@ -49,9 +51,9 @@
     elements))
 
 (defmethod set-get-element (element (set set))
-  (when (gethash element
-		 (slot-value set 'members))
-    element))
+  (let ((element-present-p (gethash element (slot-value set 'members))))
+    (when element-present-p
+      element)))
 
 (defmethod set-del-element (element (set set))
   (when (remhash elt
@@ -68,8 +70,24 @@
            (slot-value set 'members))
   nil)
 
+(defmacro set-do-elements ((element-variable set &optional result) &body body)
+  "Like DOLIST but over the elements of a set instead."
+  `(progn
+     (map-elements #'(lambda (,element-variable)
+                       ,@body)
+                   ,set)
+     ,result))
+
+(defmethod set-find-element ((set1 set) (set2 set))
+  "Find set1 as element under set2 that is SET-EQUAL to set1 and return set2 element."
+  (set-do-elements (element-of-set2 set2)
+    (when (setp element-of-set2)
+      (let ((found-set (set-equal set1 element-of-set2)))
+	(when (setp found-set)
+	  (return-from set-find-element found-set))))))
+
 #| ---------- Standard Set Types --------------------------------------------- |#
-(defgeneric set-p (object)
+(defgeneric setp (object)
   (:method ((set set))
     t)
   (:method (object)
@@ -77,7 +95,7 @@
 
 (defgeneric sets-list-p (object)
   (:method ((object-list cons))
-    (every #'set-p
+    (every #'setp
 	   object-list))
   (:method ((object null))
     t)
@@ -88,14 +106,6 @@
   `(satisfies sets-list-p))
 
 #| ---------- Set Iteration and Comparison ---------------------------------- |#
-(defmacro set-do-elements ((element-variable set &optional result) &body body)
-  "Like DOLIST but over the elements of a set instead."
-  `(progn
-     (map-elements #'(lambda (,element-variable)
-                       ,@body)
-                   ,set)
-     ,result))
-
 ;; I want to compare all the elements in two sets by iterating over the elements in the first set against those same elements in the second set with a comparison predicate for which the outcome determines if an operation is run on the return set; Then doing the same thing again with the respective two sets reversed, however, if the element already exists in the first set then we assume the predicate was already ran, and so we don't need to run it again.
 (defgeneric set-compare-1-to-2 (element-comparison-function set-1 set-2 set-result)
   (:documentation "Compare the elements of set-1 to set-2 by iterating only on the elements in set-1 using element-compare-fn and then perform its return action.")
@@ -162,7 +172,7 @@
 
 (defun elt-equal (elt-set-1-p elt-set-2-p)
   (declare (type function elt-set-1-p elt-set-2-p))
-  (if (equal (funcall elt-set-1-p) (funcall elt-set-2-p))
+  (if (funcall *elt-equal-test* (funcall elt-set-1-p) (funcall elt-set-2-p))
       #'no-action
       (throw 'elements-not-equal nil)))
 
@@ -188,7 +198,7 @@
 
 #| ---------- Fundamental Mathematical Set Operations ------------------------ |#
 (defmethod set-member-p (element (set set))
-  (set-get-element elt set))
+  (gethash element (slot-value set 'members)))
 
 (defun set (&rest elements)
   (let ((set (make-instance 'set)))
@@ -261,8 +271,10 @@
                                     set-symm-diff)) ;Add elts of R set not in L set, otherwise del elt.
             sets)))
 
+(defvar *elt-equal-test* #'equal)
+  
 (defun set-equal (set-1 set-2 &rest set-ns)
-  "Sets are set-equal if they are equal set-size and all their members are EQUAL."
+  "Sets are set-equal if they are equal set-size and all their members are EQUAL; => Right most equal set | nil."
   (declare (type set set-1 set-2)
 	   (type sets-list set-ns)) 
   (let ((sets (list* set-1
@@ -274,6 +286,6 @@
                     (set-compare-1-to-2 #'elt-equal
                                         set-1
                                         set-2
-                                        set-1))
-                sets))))) ;=> set-1
+                                        set-2))
+                sets))))) ;=> set-2
 
