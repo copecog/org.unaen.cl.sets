@@ -14,6 +14,8 @@
            #:set-get-element
            #:set-del-element
            #:set-do-elements
+	   #:set-not-default-element
+	   #:set-default-element
 	   #:set-find-element
            #:set->list
            #:set-member-p
@@ -78,13 +80,20 @@
                    ,set)
      ,result))
 
-(defmethod set-find-element ((set1 set) (set2 set))
-  "Find set1 as element under set2 that is SET-EQUAL to set1 and return set2 element."
-  (set-do-elements (element-of-set2 set2)
-    (when (setp element-of-set2)
-      (let ((found-set (set-equal set1 element-of-set2)))
-	(when (setp found-set)
-	  (return-from set-find-element found-set))))))
+(defun set-not-default-element (element)
+  (not (null element)))
+
+(defun set-default-element (element)
+  (null element))
+
+(defmethod set-find-element (element (set set) &key test &allow-other-keys)
+  "Iterate over every object in set according to comparision function :TEST and return first object that matches."
+  (when (null test)
+    (setf test #'equal))
+  (set-do-elements (element-of-set set)
+    (let ((element-found (funcall test element element-of-set)))
+      (when (set-not-default-element element-found)
+	(return-from set-find-element element-of-set)))))
 
 #| ---------- Standard Set Types --------------------------------------------- |#
 (defgeneric setp (object)
@@ -169,6 +178,8 @@
   (if (and (funcall elt-set-2-p) (not (funcall elt-set-1-p)))
       #'set-add-element
       #'set-del-element))
+
+(defvar *elt-equal-test* #'equal)
 
 (defun elt-equal (elt-set-1-p elt-set-2-p)
   (declare (type function elt-set-1-p elt-set-2-p))
@@ -271,8 +282,7 @@
                                     set-symm-diff)) ;Add elts of R set not in L set, otherwise del elt.
             sets)))
 
-(defvar *elt-equal-test* #'equal)
-  
+;; Note: add change for fold left/right options.
 (defun set-equal (set-1 set-2 &rest set-ns)
   "Sets are set-equal if they are equal set-size and all their members are EQUAL; => Right most equal set | nil."
   (declare (type set set-1 set-2)
