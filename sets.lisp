@@ -55,13 +55,12 @@
       element
       nil))
 
-(defmethod set-add-set-elements ((elements set) (set set))
-  (when (loop :for element :being :the :hash-keys of (slot-value elements 'members)
-	      :always (set-add-element element set))
-    elements))
-
-(defmethod set-add-set-elements ((elements (eql nil)) (set set))
-  nil)
+(defun set-add-set-elements (elements set)
+  (declare (type (or set (eql nil)) elements) (type set set))
+  (etypecase elements
+    (set (when (loop :for element :being :the :hash-keys of (slot-value elements 'members) :always (set-add-element element set))
+           elements))
+    (null nil)))
 
 (defun set-get-element (element set)
   (declare (type set set))
@@ -80,7 +79,7 @@
 
 (defun empty-set-p (set)
   (declare (type set set))
-  (= 0 (set-size set)))
+  (= 0 (hash-table-count (slot-value set 'members))))
 
 (defun map-elements (element-function set)
   (declare (type function element-function) (type set set))
@@ -198,17 +197,15 @@
       (push elt set-list))))
 
 (defgeneric set-build (element set)
+  (:documentation "Add elements from an existing set, list, or individual elements to set.")
   (:method ((set->elts set) (set set))
     (set-do-elements (elt set->elts)
-      (set-add-element elt
-		       set)))
+      (set-add-element elt set)))
   (:method ((list->elts cons) (set set))
     (dolist (elt list->elts)
-      (set-add-element elt
-		       set)))
+      (set-add-element elt set)))
   (:method (elt (set set))
-    (set-add-element elt
-		     set)
+    (set-add-element elt set)
     nil))
 
 #| ---------- Fundamental Mathematical Set Operations ------------------------ |#
@@ -222,8 +219,7 @@
 (defun set (&rest elements)
   (let ((set (make-instance 'set)))
     (dolist (elt elements set)
-      (set-build elt
-		 set))))
+      (set-build elt set))))
 
 ;; I wanted to keep the same pattern with the rest of the set operations, so the
 ;; newly consed set starts out with the elements of set-1 in it, and reduce adds
